@@ -29,4 +29,4 @@ the program is a component of a larger project, in which the user can experiment
 - surveillance of the local machine is imperative to conduct such a/b testing
 - it is of uttermost importance, if the user has a capable nvidia gpu for memory dumping!
 - i want to at some point make a daemon, that runs like a service in the background: It recognizes when the pc is idle, then initiates queued resource intensive ai tasks
-- as programming such a daemon probably should´nt be done in python, it is currently beyond my capabilities - expect updates, once i am proficient enough in ASSEMBLER ;)
+- as programming such a daemon probably should´nt be done in python, it is currently beyond my capabilities - expect updates, once i am proficient enough in assembler ;)
