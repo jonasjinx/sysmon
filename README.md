@@ -2,7 +2,9 @@
 
 a very simple system monitor, made to explore some concepts in python.
 
-open **http://127.0.0.1:5000** in your browser to see the output
+- to run it you have to have python installed and then manually (for now) install the dependencies using "pip install"
+- execute the SYSMON.py in the root folder
+- open **http://127.0.0.1:5000** in your browser to see the output
 
 ![ActionShot](screenshot.PNG)
 
