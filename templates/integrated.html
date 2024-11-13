@@ -1,0 +1,81 @@
+{# templates/integrated.html #}
+
+{% extends "base.html" %}
+
+{% block consolecap %}
+<div class="console-container">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title">Console Output</h5>
+            <div class="controls">
+                <button id="clear-console" class="control-btn">Clear</button>
+                <button id="pause-console" class="control-btn">Pause</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="console-output"></div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block sysmon %}
+    <div class="container-fluid">
+        <h1 class="text-center mt-4 mb-4">SYSMON</h1>
+        <div class="row">
+            <div class="col-md-4">
+                <canvas id="cpuChart"></canvas>
+            </div>
+            <div class="col-md-4">
+                <canvas id="memoryDiskChart"></canvas>
+            </div>
+            <div class="col-md-4">
+                <canvas id="networkChart"></canvas>
+            </div>
+        </div>
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">Current System Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>CPU Usage: <span id="cpuUsage"></span>%</p>
+                        <p>Memory Usage: <span id="memoryUsage"></span>%</p>
+                        <p>Disk Usage: <span id="diskUsage"></span>%</p>
+                        <p>Network: Sent <span id="networkSent"></span> / Received <span id="networkRecv"></span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">Hardware Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>OS: {{ hardware_info.os }}</p>
+                        <p>CPU: {{ hardware_info.cpu }}</p>
+                        <p>RAM: {{ hardware_info.ram }}</p>
+                        <p>NVIDIA GPU: {% if hardware_info.nvidia_gpu %}Detected{% else %}Not Detected{% endif %}</p>
+                        <p>Idle Status: <span id="idleStatus" class="idle-status"></span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block js %}
+    <script>
+        // Configuration from Flask
+        const SYSMON_REFRESH_RATE = {{ config.SYSMON_REFRESH_RATE | default(5000) }};
+        const LIMIT_DISPLAYED_DATAPOINTS = {{ config.LIMIT_DISPLAYED_DATAPOINTS | default(30) }};
+        const SET_IDLE_TIME = {{ config.SET_IDLE_TIME | default(300000) }};
+        const CONSOLE_MAX_LINES = {{ config.CONSOLE_MAX_LINES | default(100) }};
+        const CONSOLE_REFRESH_INTERVAL = {{ config.CONSOLE_REFRESH_INTERVAL | default(5000) }};
+    </script>
+
+    <script src="{{ url_for('static', filename='integrated.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}

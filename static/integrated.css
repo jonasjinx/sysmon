@@ -1,0 +1,142 @@
+/* integrated.css */
+/* sysmon */
+:root {
+    --primary: #3e7bfa;
+    --action: #ff8800;
+    --bg-dark: #1c1c28;
+    --bg-lighter: #33333d;
+    --text-primary: #f2f2f5;
+    --text-secondary: #8e90a6;
+    --accent-blue: #6698fa;
+    --accent-orange: #fdac42;
+    --error-red: #ff3b3b;
+    --success-green: #06c270;
+}
+
+body {
+    color: #f2f2f5;
+    font-family: 'Arial', sans-serif;
+    margin: 2rem;
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+}
+
+.card {
+    background-color: #28293d;
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background-color: #33333d;
+    border-bottom: none;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-title {
+    color: #6698fa;
+}
+
+canvas {
+    background-color: #2f3047;
+    border-radius: 10px;
+    padding: 10px;
+}
+
+.idle-status {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #ff3b3b;
+}
+
+.idle-status.active {
+    background-color: #06c270;
+}
+
+/* console capture */
+
+.console-container {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    margin: 20px auto;
+    max-width: 800px;
+}
+
+.controls {
+    display: flex;
+    gap: 10px;
+}
+
+.control-btn {
+    background-color: var(--bg-lighter);
+    border: 1px solid var(--accent-blue);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.control-btn:hover {
+    background-color: var(--accent-blue);
+}
+
+#console-output {
+    height: 240px;
+    overflow-y: auto;
+    padding: 8px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 8px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    color: var(--text-primary);
+    border-radius-bottom: 8px;
+    margin-bottom: 8px;
+}
+
+/* Output type styling */
+.output-stdout {
+    color: var(--text-primary);
+}
+
+.output-stderr {
+    color: var(--error-red);
+}
+
+.output-log {
+    color: var(--accent-blue);
+}
+
+/* Scrollbar styling */
+#console-output::-webkit-scrollbar {
+    width: 8px;
+}
+
+#console-output::-webkit-scrollbar-track {
+    background: var(--bg-dark);
+}
+
+#console-output::-webkit-scrollbar-thumb {
+    background: var(--accent-blue);
+    border-radius: 4px;
+}
+
+.timestamp {
+    color: var(--text-secondary);
+    margin-right: 8px;
+}
+
+.test-button:hover {
+    background-color: var(--primary);
+}
+
+
