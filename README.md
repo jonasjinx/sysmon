@@ -4,6 +4,8 @@ a very simple system monitor, made to explore some concepts in python.
 
 open **http://127.0.0.1:5000** in your browser to see the output
 
+![ActionShot](screenshot.png)
+
 ### features
 - measures system metrics and outputs them visually - similar to the windows task manager
 - checks if the machine it runs on has a NVIDIA gpu or not
