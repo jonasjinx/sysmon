@@ -22,8 +22,8 @@ a very simple system monitor, made to explore some concepts in python.
 - some configurations can be made at the beginning of the py script (intervals, console filtering,...)
 
 > [!WARNING]  
-> this is NOT a finished product, feel free to explore the code and submit suggestions, bugfixes etc.
-> upon closer inspections a couple of things could be improved, eg. using AJAX instead of passing inline scripts etc
+> - this is NOT a finished product, feel free to explore the code and submit suggestions, bugfixes etc.
+> - upon closer inspections a couple of things could be improved, eg. using AJAX instead of passing inline scripts etc
 
 ### context
 the program is a component of a larger project, in which the user can experiment by running (locally) different llms and playing around with the parameters
