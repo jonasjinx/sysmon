@@ -115,29 +115,24 @@ function createCharts() {
 }
 
 function updateCharts(data) {
-    const timestamp = new Date().toLocaleTimeString();
+    // Use the history data from the backend
+    const labels = data.history.map(point => point.timestamp);
+    const cpuData = data.history.map(point => point.cpu);
+    const memoryData = data.history.map(point => point.memory);
+    const diskData = data.history.map(point => point.disk);
+    const networkSentData = data.history.map(point => point.network.sent);
+    const networkRecvData = data.history.map(point => point.network.recv);
 
-    cpuChart.data.labels.push(timestamp);
-    cpuChart.data.datasets[0].data.push(data.cpu);
+    cpuChart.data.labels = labels;
+    cpuChart.data.datasets[0].data = cpuData;
 
-    memoryDiskChart.data.labels.push(timestamp);
-    memoryDiskChart.data.datasets[0].data.push(data.memory);
-    memoryDiskChart.data.datasets[1].data.push(data.disk);
+    memoryDiskChart.data.labels = labels;
+    memoryDiskChart.data.datasets[0].data = memoryData;
+    memoryDiskChart.data.datasets[1].data = diskData;
 
-    networkChart.data.labels.push(timestamp);
-    networkChart.data.datasets[0].data.push(data.network.sent);
-    networkChart.data.datasets[1].data.push(data.network.recv);
-
-    if (cpuChart.data.labels.length > config.LIMIT_DISPLAYED_DATAPOINTS) {
-        cpuChart.data.labels.shift();
-        cpuChart.data.datasets[0].data.shift();
-        memoryDiskChart.data.labels.shift();
-        memoryDiskChart.data.datasets[0].data.shift();
-        memoryDiskChart.data.datasets[1].data.shift();
-        networkChart.data.labels.shift();
-        networkChart.data.datasets[0].data.shift();
-        networkChart.data.datasets[1].data.shift();
-    }
+    networkChart.data.labels = labels;
+    networkChart.data.datasets[0].data = networkSentData;
+    networkChart.data.datasets[1].data = networkRecvData;
 
     cpuChart.update();
     memoryDiskChart.update();
@@ -145,19 +140,12 @@ function updateCharts(data) {
 }
 
 function updateSystemStatus(data) {
-    document.getElementById('cpuUsage').textContent = data.cpu.toFixed(1);
-    document.getElementById('memoryUsage').textContent = data.memory.toFixed(1);
-    document.getElementById('diskUsage').textContent = data.disk.toFixed(1);
-    document.getElementById('networkSent').textContent = formatBytes(data.network.sent) + '/s';
-    document.getElementById('networkRecv').textContent = formatBytes(data.network.recv) + '/s';
-}
-
-function formatBytes(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    const current = data.current;
+    document.getElementById('cpuUsage').textContent = current.cpu.toFixed(1);
+    document.getElementById('memoryUsage').textContent = current.memory.toFixed(1);
+    document.getElementById('diskUsage').textContent = current.disk.toFixed(1);
+    document.getElementById('networkSent').textContent = current.network.sent_formatted;
+    document.getElementById('networkRecv').textContent = current.network.recv_formatted;
 }
 
 function fetchData() {
@@ -195,15 +183,8 @@ function updateConsole(newOutputs) {
         const line = document.createElement('div');
         line.className = `output-${output.type}`;
         line.innerHTML = `<span class="timestamp">${output.timestamp}</span>${output.text}`;
-        consoleLines.push(line);
+        consoleOutput.appendChild(line);
     });
-
-    while (consoleLines.length > config.CONSOLE_MAX_LINES) {
-        consoleLines.shift();
-    }
-
-    consoleOutput.innerHTML = '';
-    consoleLines.forEach(line => consoleOutput.appendChild(line));
 
     if (consoleOutput.scrollHeight - consoleOutput.scrollTop <= consoleOutput.clientHeight + 50) {
         consoleOutput.scrollTop = consoleOutput.scrollHeight;
@@ -221,30 +202,44 @@ function fetchConsoleOutput() {
         .catch(error => console.error('Error fetching console output:', error));
 }
 
+function clearConsole() {
+    fetch('/clear-console')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                consoleOutput.innerHTML = '';
+            }
+        })
+        .catch(error => console.error('Error clearing console:', error));
+}
+
+// Event listeners for activity reset
 document.addEventListener('mousemove', resetIdleTimer);
 document.addEventListener('keydown', resetIdleTimer);
 
+// Initialize application
 window.addEventListener('load', () => {
     fetchConfig().then(() => {
+        // Initialize charts
         createCharts();
         fetchData();
         setInterval(fetchData, config.SYSMON_REFRESH_RATE);
         resetIdleTimer();
 
+        // Setup console elements
         consoleOutput = document.getElementById('console-output');
         clearConsoleBtn = document.getElementById('clear-console');
         pauseConsoleBtn = document.getElementById('pause-console');
 
-        clearConsoleBtn.addEventListener('click', () => {
-            consoleLines = [];
-            consoleOutput.innerHTML = '';
-        });
+        // Setup console controls
+        clearConsoleBtn.addEventListener('click', clearConsole);
 
         pauseConsoleBtn.addEventListener('click', () => {
             consoleConfig.isPaused = !consoleConfig.isPaused;
             pauseConsoleBtn.textContent = consoleConfig.isPaused ? 'Resume' : 'Pause';
         });
 
+        // Start console polling
         setInterval(fetchConsoleOutput, config.CONSOLE_REFRESH_INTERVAL);
     });
 });

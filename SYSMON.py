@@ -1,4 +1,3 @@
-# System Monitoring app by Jonas Buchfink
 from flask import Flask, render_template, jsonify
 import psutil
 import platform
@@ -8,6 +7,7 @@ from queue import Queue
 from threading import Lock
 import datetime
 import time
+import math
 
 app = Flask(__name__)
 
@@ -30,12 +30,21 @@ cpu_data = []
 memory_data = []
 disk_data = []
 network_data = []
+console_lines = []
 
 # Store last network values for delta calculation
 last_network_sent = 0
 last_network_recv = 0
 last_network_time = time.time()
 
+def format_bytes(bytes_value):
+    """Format bytes to human readable format"""
+    if bytes_value == 0:
+        return '0 Bytes'
+    k = 1024
+    sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+    i = int(math.floor(math.log(bytes_value) / math.log(k)))
+    return f"{(bytes_value / (k ** i)):.2f} {sizes[i]}/s"
 
 #########################
 # System Monitoring
@@ -67,31 +76,31 @@ def get_system_info():
     last_network_recv = network.bytes_recv
     last_network_time = current_time
 
+    # Get current timestamp
+    timestamp = datetime.datetime.now().strftime('%H:%M:%S')
+
     # Store historical data
-    cpu_data.append(cpu_percent)
-    memory_data.append(memory.percent)
-    disk_data.append(disk.percent)
-    network_data.append((sent_speed, recv_speed))
-
-    # Limit data points
-    if len(cpu_data) > app.config['LIMIT_DISPLAYED_DATAPOINTS']:
-        cpu_data.pop(0)
-        memory_data.pop(0)
-        disk_data.pop(0)
-        network_data.pop(0)
-
-    return {
+    data_point = {
+        'timestamp': timestamp,
         'cpu': cpu_percent,
         'memory': memory.percent,
         'disk': disk.percent,
         'network': {
-            'sent': sent_speed,  # Now sending speed instead of total
-            'recv': recv_speed   # Now sending speed instead of total
-        },
-        'cpu_data': cpu_data,
-        'memory_data': memory_data,
-        'disk_data': disk_data,
-        'network_data': [{'sent': sent, 'recv': recv} for sent, recv in network_data]
+            'sent': sent_speed,
+            'recv': recv_speed,
+            'sent_formatted': format_bytes(sent_speed),
+            'recv_formatted': format_bytes(recv_speed)
+        }
+    }
+
+    # Add to history and maintain limit
+    cpu_data.append(data_point)
+    if len(cpu_data) > app.config['LIMIT_DISPLAYED_DATAPOINTS']:
+        cpu_data.pop(0)
+
+    return {
+        'current': data_point,
+        'history': cpu_data
     }
 
 def get_hardware_info():
@@ -109,20 +118,55 @@ def get_hardware_info():
         'nvidia_gpu': nvidia_gpu
     }
 
+#########################
+# Console Management
+#########################
+
+class ConsoleManager:
+    def __init__(self, max_lines=100):
+        self.max_lines = max_lines
+        self.lines = []
+        self.lock = Lock()
+
+    def add_line(self, text, output_type='stdout'):
+        with self.lock:
+            timestamp = datetime.datetime.now().strftime('%H:%M:%S')
+            line = {
+                'text': text,
+                'timestamp': timestamp,
+                'type': output_type
+            }
+            
+            if self.filter_line(line):
+                self.lines.append(line)
+                if len(self.lines) > self.max_lines:
+                    self.lines.pop(0)
+                return True
+            return False
+
+    def filter_line(self, line):
+        """Filter console output based on displayfilter"""
+        text = line['text']
+        return not any(filter_str in text for filter_str in displayfilter)
+
+    def get_lines(self):
+        with self.lock:
+            return self.lines.copy()
+
+    def clear(self):
+        with self.lock:
+            self.lines = []
+
+console_manager = ConsoleManager(app.config['CONSOLE_MAX_LINES'])
 
 #########################
-# Logging
+# Logging Setup
 #########################
 
-# Custom logging handler for Flask
 class ConsoleQueueHandler(logging.Handler):
     def emit(self, record):
-        with output_lock:
-            console_output.put({
-                'text': self.format(record),
-                'timestamp': datetime.datetime.now().strftime('%H:%M:%S'),
-                'type': 'log'
-            })
+        text = self.format(record)
+        console_manager.add_line(text, 'log')
 
 # Custom stream to capture both stdout and stderr
 class ConsoleCapture:
@@ -133,25 +177,17 @@ class ConsoleCapture:
 
     def write(self, text):
         try:
-            # Convert bytes to string if necessary
             if isinstance(text, bytes):
                 text = text.decode('utf-8', errors='replace')
 
-            if text.strip():  # Only process non-empty strings
-                with output_lock:
-                    console_output.put({
-                        'text': text,
-                        'timestamp': datetime.datetime.now().strftime('%H:%M:%S'),
-                        'type': self.stream_type
-                    })
+            if text.strip():
+                console_manager.add_line(text, self.stream_type)
 
-                # Write to real console as well
                 if self.stream_type == 'stdout':
                     self._real_stdout.write(text)
                 else:
                     self._real_stderr.write(text)
         except Exception as e:
-            # If something goes wrong, write to real stderr
             sys.__stderr__.write(f"ConsoleCapture error: {str(e)}\n")
 
     def flush(self):
@@ -167,82 +203,51 @@ class ConsoleCapture:
             return self._real_stderr.fileno()
 
 # Set up logging
-logging.basicConfig(
-    format='%(message)s',
-    level=logging.INFO
-)
-
-# Custom formatter for Werkzeug
+logging.basicConfig(format='%(message)s', level=logging.INFO)
 werkzeug_handler = ConsoleQueueHandler()
 werkzeug_handler.setFormatter(logging.Formatter('%(message)s'))
 
-# Set up logging for Werkzeug
 logger = logging.getLogger('werkzeug')
-logger.handlers = []  # Remove default handlers
+logger.handlers = []
 logger.addHandler(werkzeug_handler)
 logger.setLevel(logging.INFO)
 
-# Replace system stdout and stderr with our custom streams
 sys.stdout = ConsoleCapture('stdout')
 sys.stderr = ConsoleCapture('stderr')
 
-def filter_console_output(line_dict, filters):
-    """
-    Prüft, ob eine Konsolenzeile gefiltert werden soll
-    Args:
-        line_dict (dict): Dictionary mit der Konsolenzeile ('text', 'timestamp', 'type')
-        filters (list): Liste von Strings, die gefiltert werden sollen
-    Returns:
-        bool: True wenn die Zeile behalten werden soll, False wenn sie gefiltert werden soll
-    """
-    text = line_dict['text']
-    for filter_string in filters:
-        if filter_string in text:
-            return False
-    return True
-
-
 #########################
-# OUTPUT TO APP
+# Routes
 #########################
-
-# Queue to store console output
-console_output = Queue()
-output_lock = Lock()
 
 @app.route('/')
 def index():
     print("Accessing index page")
     return render_template('integrated.html', 
-                           hardware_info=get_hardware_info(), 
-                           config=app.config) 
+                         hardware_info=get_hardware_info(), 
+                         config=app.config)
 
 @app.route('/update_data')
 def update_data():
-    data = get_system_info()
-    # print("Sending data:", data)  # Debug print
-    return jsonify(data)
+    return jsonify(get_system_info())
 
 @app.route('/get-console-output')
 def get_console_output():
-    outputs = []
-    with output_lock:
-        while not console_output.empty():
-            line = console_output.get()
-            if filter_console_output(line, displayfilter):
-                outputs.append(line)
-    return jsonify(outputs)
+    return jsonify(console_manager.get_lines())
+
+@app.route('/clear-console')
+def clear_console():
+    console_manager.clear()
+    return jsonify({'status': 'success'})
 
 @app.route('/get-config')
 def get_config():
-    config = {
-        'SYSMON_REFRESH_RATE': app.config.get('SYSMON_REFRESH_RATE', 5000),
-        'LIMIT_DISPLAYED_DATAPOINTS': app.config.get('LIMIT_DISPLAYED_DATAPOINTS', 30),
-        'SET_IDLE_TIME': app.config.get('SET_IDLE_TIME', 300000),
-        'CONSOLE_MAX_LINES': app.config.get('CONSOLE_MAX_LINES', 100),
-        'CONSOLE_REFRESH_INTERVAL': app.config.get('CONSOLE_REFRESH_INTERVAL', 5000)
-    }
-    return jsonify(config)
+    return jsonify({
+        'SYSMON_REFRESH_RATE': app.config['SYSMON_REFRESH_RATE'],
+        'LIMIT_DISPLAYED_DATAPOINTS': app.config['LIMIT_DISPLAYED_DATAPOINTS'],
+        'SET_IDLE_TIME': app.config['SET_IDLE_TIME'],
+        'CONSOLE_MAX_LINES': app.config['CONSOLE_MAX_LINES'],
+        'CONSOLE_REFRESH_INTERVAL': app.config['CONSOLE_REFRESH_INTERVAL']
+    })
 
 if __name__ == '__main__':
     print("Starting Flask application...")
