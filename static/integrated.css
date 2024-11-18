@@ -99,7 +99,6 @@ canvas {
     line-height: 1.4;
     white-space: pre-wrap;
     color: var(--text-primary);
-    border-radius-bottom: 8px;
     margin-bottom: 8px;
 }
 

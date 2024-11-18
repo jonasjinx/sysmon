@@ -188,12 +188,10 @@ sys.stderr = ConsoleCapture('stderr')
 
 def filter_console_output(line_dict, filters):
     """
-    Prüft, ob eine Konsolenzeile gefiltert werden soll.
-    
+    Prüft, ob eine Konsolenzeile gefiltert werden soll
     Args:
         line_dict (dict): Dictionary mit der Konsolenzeile ('text', 'timestamp', 'type')
         filters (list): Liste von Strings, die gefiltert werden sollen
-    
     Returns:
         bool: True wenn die Zeile behalten werden soll, False wenn sie gefiltert werden soll
     """
@@ -217,7 +215,7 @@ def index():
     print("Accessing index page")
     return render_template('integrated.html', 
                            hardware_info=get_hardware_info(), 
-                           config=app.config)  # Pass the entire config
+                           config=app.config) 
 
 @app.route('/update_data')
 def update_data():
@@ -234,6 +232,17 @@ def get_console_output():
             if filter_console_output(line, displayfilter):
                 outputs.append(line)
     return jsonify(outputs)
+
+@app.route('/get-config')
+def get_config():
+    config = {
+        'SYSMON_REFRESH_RATE': app.config.get('SYSMON_REFRESH_RATE', 5000),
+        'LIMIT_DISPLAYED_DATAPOINTS': app.config.get('LIMIT_DISPLAYED_DATAPOINTS', 30),
+        'SET_IDLE_TIME': app.config.get('SET_IDLE_TIME', 300000),
+        'CONSOLE_MAX_LINES': app.config.get('CONSOLE_MAX_LINES', 100),
+        'CONSOLE_REFRESH_INTERVAL': app.config.get('CONSOLE_REFRESH_INTERVAL', 5000)
+    }
+    return jsonify(config)
 
 if __name__ == '__main__':
     print("Starting Flask application...")

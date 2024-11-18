@@ -6,6 +6,17 @@ let consoleLines = [];
 let consoleConfig = {
     isPaused: false
 };
+let config = {};
+
+function fetchConfig() {
+    return fetch('/get-config')
+        .then(response => response.json())
+        .then(data => {
+            config = data;
+            return config;
+        })
+        .catch(error => console.error('Error fetching config:', error));
+}
 
 function createCharts() {
     const ctx1 = document.getElementById('cpuChart').getContext('2d');
@@ -117,7 +128,7 @@ function updateCharts(data) {
     networkChart.data.datasets[0].data.push(data.network.sent);
     networkChart.data.datasets[1].data.push(data.network.recv);
 
-    if (cpuChart.data.labels.length > LIMIT_DISPLAYED_DATAPOINTS) {
+    if (cpuChart.data.labels.length > config.LIMIT_DISPLAYED_DATAPOINTS) {
         cpuChart.data.labels.shift();
         cpuChart.data.datasets[0].data.shift();
         memoryDiskChart.data.labels.shift();
@@ -149,7 +160,6 @@ function formatBytes(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-// Update the data fetching to handle errors
 function fetchData() {
     fetch('/update_data')
         .then(response => {
@@ -167,12 +177,11 @@ function fetchData() {
         });
 }
 
-
 function resetIdleTimer() {
     lastActivity = Date.now();
     document.getElementById('idleStatus').classList.remove('active');
     clearTimeout(idleTimer);
-    idleTimer = setTimeout(setIdle, SET_IDLE_TIME);
+    idleTimer = setTimeout(setIdle, config.SET_IDLE_TIME);
 }
 
 function setIdle() {
@@ -189,16 +198,13 @@ function updateConsole(newOutputs) {
         consoleLines.push(line);
     });
 
-    // Trim excess lines
-    while (consoleLines.length > CONSOLE_MAX_LINES) {
+    while (consoleLines.length > config.CONSOLE_MAX_LINES) {
         consoleLines.shift();
     }
 
-    // Update display
     consoleOutput.innerHTML = '';
     consoleLines.forEach(line => consoleOutput.appendChild(line));
 
-    // Auto-scroll to bottom if not manually scrolled up
     if (consoleOutput.scrollHeight - consoleOutput.scrollTop <= consoleOutput.clientHeight + 50) {
         consoleOutput.scrollTop = consoleOutput.scrollHeight;
     }
@@ -219,25 +225,26 @@ document.addEventListener('mousemove', resetIdleTimer);
 document.addEventListener('keydown', resetIdleTimer);
 
 window.addEventListener('load', () => {
-    createCharts();
-    fetchData();
-    setInterval(fetchData, SYSMON_REFRESH_RATE);
-    resetIdleTimer();
+    fetchConfig().then(() => {
+        createCharts();
+        fetchData();
+        setInterval(fetchData, config.SYSMON_REFRESH_RATE);
+        resetIdleTimer();
 
-    // Console-related code
-    consoleOutput = document.getElementById('console-output');
-    clearConsoleBtn = document.getElementById('clear-console');
-    pauseConsoleBtn = document.getElementById('pause-console');
+        consoleOutput = document.getElementById('console-output');
+        clearConsoleBtn = document.getElementById('clear-console');
+        pauseConsoleBtn = document.getElementById('pause-console');
 
-    clearConsoleBtn.addEventListener('click', () => {
-        consoleLines = [];
-        consoleOutput.innerHTML = '';
+        clearConsoleBtn.addEventListener('click', () => {
+            consoleLines = [];
+            consoleOutput.innerHTML = '';
+        });
+
+        pauseConsoleBtn.addEventListener('click', () => {
+            consoleConfig.isPaused = !consoleConfig.isPaused;
+            pauseConsoleBtn.textContent = consoleConfig.isPaused ? 'Resume' : 'Pause';
+        });
+
+        setInterval(fetchConsoleOutput, config.CONSOLE_REFRESH_INTERVAL);
     });
-
-    pauseConsoleBtn.addEventListener('click', () => {
-        consoleConfig.isPaused = !consoleConfig.isPaused;
-        pauseConsoleBtn.textContent = consoleConfig.isPaused ? 'Resume' : 'Pause';
-    });
-
-    setInterval(fetchConsoleOutput, CONSOLE_REFRESH_INTERVAL);
 });
