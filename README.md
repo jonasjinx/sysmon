@@ -23,7 +23,10 @@ a very simple system monitor, made to explore some concepts in python.
 
 > [!WARNING]  
 > - this is NOT a finished product, feel free to explore the code and submit suggestions, bugfixes etc.
-> - upon closer inspections a couple of things could be improved, eg. using AJAX instead of passing inline scripts etc
+> - upon closer inspections a couple of things could be improved
+>   Known bugs:
+> - it takes some time for the y-axis of network traffic scales in
+> - the scale-labels of the x-axis dont correctly display, number of displayed datapoints doesn´t function
 
 ### context
 the program is a component of a larger project, in which the user can experiment by running (locally) different llms and playing around with the parameters
